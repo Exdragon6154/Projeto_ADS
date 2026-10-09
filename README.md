@@ -1,10 +1,1 @@
-VitrinePro/
-├── index.html
-├── assets/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       └── app.js
-├── .gitignore
-├── README.md
-└── LICENSE (opcional)
+Projeto front-end estático de marketplace com login, catálogo, favoritos, carrinho e painel administrativo.
