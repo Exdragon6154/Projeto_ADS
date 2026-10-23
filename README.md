@@ -1,29 +1,26 @@
-# Vitrine Pro
+# Vitrine Pro — versão 19
 
-Projeto front-end estático de marketplace com login, catálogo, favoritos, simulação de carrinho e painéis de cliente, fornecedor e administrador.
+## Conteúdo
+- `VitrinePRO_19.html`: interface da versão 19.
+- `backend/VitrinePRO_19.html`: interface servida pelo backend.
+- `backend/server.js`: API Node.js/Express ajustada para servir a versão 19.
+- `backend/schema.sql`: estrutura do banco MySQL.
+- `backend/seed.js`: dados demonstrativos.
+- `backend/.env.example`: modelo de configuração, sem senhas reais.
+- `RESUMO_DAS_ALTERACOES.md`: resumo compartilhável da atualização.
 
-## Estrutura do projeto
+## Como configurar em um computador
+1. Instale Node.js e MySQL.
+2. Abra a pasta `backend`.
+3. Execute `npm install`.
+4. Copie `.env.example` para um arquivo chamado `.env`.
+5. Edite `.env` e informe a senha local do MySQL e uma chave JWT longa e exclusiva. Não compartilhe o `.env`.
+6. Execute `schema.sql` no MySQL para criar a estrutura do banco `vitrinepro`.
+7. Opcionalmente, execute `node seed.js` para inserir os dados de demonstração. Atenção: use seed somente se desejar esses dados.
+8. Execute `npm start` dentro de `backend` e acesse `http://localhost:3000`.
 
-```text
-Projeto_ADS/
-├── index.html
-├── assets/
-│   ├── css/
-│   │   └── style.css
-│   └── js/
-│       └── app.js
-├── backup/
-│   └── VitrinePRO_10_original.html
-└── README.md
-```
+## Situação conhecida
+A integração inicial com MySQL foi testada para login, listagem e cadastro de produto. A versão 19 inclui uma tentativa de correção no fluxo de edição para enviar `PUT /api/products/:id` quando há um ID de produto. **A edição ainda precisa ser validada no ambiente local**, assim como exclusão, cadastros e permissões de todos os perfis. Portanto, esta versão não deve ser considerada totalmente testada ou pronta para produção.
 
-## Como executar
-
-1. Baixe ou clone este repositório.
-2. Abra `index.html` no navegador; ou abra a pasta no VS Code e use uma extensão de servidor local, se preferir.
-3. O CSS e o JavaScript são carregados por `assets/css/style.css` e `assets/js/app.js`.
-
-## Observações
-
-- O arquivo original foi preservado em `backup/VitrinePRO_10_original.html`.
-- Esta versão reorganiza o HTML, CSS e JavaScript em arquivos separados. Ela continua sendo uma aplicação front-end estática; recursos que precisem de servidor ou banco de dados real não passam a existir apenas por essa separação.
+## Segurança
+O ZIP não inclui `.env` nem `node_modules`. Isso evita compartilhar credenciais locais e reduz o tamanho. Cada pessoa deve criar seu próprio `.env` com credenciais próprias. Não publicar a aplicação em produção sem revisão de segurança.
