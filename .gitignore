@@ -1,0 +1,7 @@
+# Credenciais locais e dependências
+backend/.env
+backend/node_modules/
+node_modules/
+*.log
+.DS_Store
+Thumbs.db

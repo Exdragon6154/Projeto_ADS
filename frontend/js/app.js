@@ -14,7 +14,6 @@ const CLIENTS_DB = [
     id: 1,
     nome: "João Silva",
     email: "joao.cliente@vitrinepro.com",
-    senha: "123456",
     telefone: "(12) 99999-1001",
     cidade: "Jacareí",
     estado: "SP"
@@ -23,7 +22,6 @@ const CLIENTS_DB = [
     id: 2,
     nome: "Mariana Oliveira",
     email: "mariana.cliente@vitrinepro.com",
-    senha: "123456",
     telefone: "(12) 99999-1002",
     cidade: "São José dos Campos",
     estado: "SP"
@@ -44,8 +42,8 @@ try { SUPPLIERS_DB = JSON.parse(localStorage.getItem("vitrineSuppliersDB") || "n
 catch (e) { console.warn("Banco local de fornecedores inválido. Será recriado."); }
 if(!Array.isArray(SUPPLIERS_DB) || !SUPPLIERS_DB.length){
   SUPPLIERS_DB = [
-    {id:1,empresa:"Vitrine Sports Distribuidora",responsavel:"Carlos Mendes",email:"carlos.fornecedor@vitrinepro.com",senha:"123456",telefone:"(12) 98888-2001",cidade:"Jacareí",estado:"SP",cnpj:"12.345.678/0001-90",endereco:"Av. Principal, 100 - Centro, Jacareí - SP",descricao:"Distribuidora de produtos esportivos para demonstração."},
-    {id:2,empresa:"Moda & Esporte Distribuidora",responsavel:"Fernanda Costa",email:"fernanda.fornecedor@vitrinepro.com",senha:"123456",telefone:"(12) 98888-2002",cidade:"São José dos Campos",estado:"SP",cnpj:"98.765.432/0001-10",endereco:"Rua das Flores, 250 - Centro, São José dos Campos - SP",descricao:"Fornecedor de moda e produtos esportivos para demonstração."}
+    {id:1,empresa:"Vitrine Sports Distribuidora",responsavel:"Carlos Mendes",email:"carlos.fornecedor@vitrinepro.com",telefone:"(12) 98888-2001",cidade:"Jacareí",estado:"SP",cnpj:"12.345.678/0001-90",endereco:"Av. Principal, 100 - Centro, Jacareí - SP",descricao:"Distribuidora de produtos esportivos para demonstração."},
+    {id:2,empresa:"Moda & Esporte Distribuidora",responsavel:"Fernanda Costa",email:"fernanda.fornecedor@vitrinepro.com",telefone:"(12) 98888-2002",cidade:"São José dos Campos",estado:"SP",cnpj:"98.765.432/0001-10",endereco:"Rua das Flores, 250 - Centro, São José dos Campos - SP",descricao:"Fornecedor de moda e produtos esportivos para demonstração."}
   ];
   localStorage.setItem("vitrineSuppliersDB", JSON.stringify(SUPPLIERS_DB));
 }
@@ -100,7 +98,7 @@ let currentFilter = "Todos";
 
 function saveClients(){
   const demoIds = new Set([1,2]);
-  const customClients = CLIENTS_DB.filter(c => !demoIds.has(Number(c.id)));
+  const customClients = CLIENTS_DB.filter(c => !demoIds.has(Number(c.id))).map(({senha, password, ...safe}) => safe);
   localStorage.setItem("vitrineClientsDB", JSON.stringify(customClients));
 }
 function openClientRegistration(){
@@ -136,7 +134,7 @@ function registerClient(event){
   showToast("Cadastro de cliente realizado com sucesso! Agora clique em Entrar.");
 }
 
-function saveSuppliers(){localStorage.setItem("vitrineSuppliersDB",JSON.stringify(SUPPLIERS_DB));}
+function saveSuppliers(){const safe=Array.isArray(SUPPLIERS_DB)?SUPPLIERS_DB.map(({senha,password,...item})=>item):[];localStorage.setItem("vitrineSuppliersDB",JSON.stringify(safe));}
 function openSupplierRegistration(){document.getElementById("supplierRegistrationForm").reset();document.getElementById("supplierRegistrationModal").classList.add("open");}
 function closeSupplierRegistration(){document.getElementById("supplierRegistrationModal").classList.remove("open");}
 function registerSupplier(event){
@@ -552,11 +550,19 @@ function renderProducts(){
 
 function renderSupplier(){
   const logged = JSON.parse(sessionStorage.getItem("vitrineLoggedUser") || "null");
-  const supplierId = logged?.role === "fornecedor" ? logged.id : null;
-  const supplierProducts = supplierId
-    ? products.filter(p => Number(p.supplierId) === Number(supplierId))
-    : products;
-  const supplier = supplierId ? SUPPLIERS_DB.find(s => Number(s.id) === Number(supplierId)) : null;
+  // O ID de usuarios pode ser diferente do ID de fornecedores.
+  // Primeiro vinculamos pelo e-mail, que identifica o mesmo cadastro nos dois retornos.
+  // Se não houver correspondência por e-mail, tentamos o vínculo por usuario_id.
+  const loggedEmail = String(logged?.email || "").trim().toLowerCase();
+  const supplier = logged?.role === "fornecedor"
+    ? (SUPPLIERS_DB.find(s => String(s.email || "").trim().toLowerCase() === loggedEmail)
+       || SUPPLIERS_DB.find(s => Number(s.usuario_id ?? s.usuarioId ?? s.user_id) === Number(logged.id))
+       || null)
+    : null;
+  const supplierId = supplier ? Number(supplier.id) : null;
+  const supplierProducts = supplierId !== null
+    ? products.filter(p => Number(p.supplierId) === supplierId)
+    : [];
   renderSupplierInfo(supplier);
 
   const tbody = document.getElementById("supplierTable");
@@ -564,7 +570,10 @@ function renderSupplier(){
     `${supplierProducts.length} item${supplierProducts.length === 1 ? "" : "s"} no catálogo`;
 
   if(!supplierProducts.length){
-    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#777">Nenhum produto cadastrado.</td></tr>`;
+    const message = supplier
+      ? "Nenhum produto cadastrado para esta loja."
+      : "Não foi possível vincular este login ao cadastro do fornecedor. Confira o vínculo entre usuarios.id e fornecedores.usuario_id.";
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#777">${message}</td></tr>`;
     return;
   }
 
@@ -777,7 +786,7 @@ document.addEventListener("DOMContentLoaded",()=>{ window.selectedRole="cliente"
 
 
 /* ===== VITRINEPRO_06 - ADMINISTRADOR ===== */
-const ADMINS_DB = [{id:1,nome:"Administrador Vitrine Pro",email:"admin@vitrinepro.com",senha:"123456",role:"admin"}];
+const ADMINS_DB = [{id:1,nome:"Administrador Vitrine Pro",email:"admin@vitrinepro.com",role:"admin"}];
 function getAdminLogs(){try{return JSON.parse(localStorage.getItem("vitrineAdminLogs")||"[]")}catch(e){return []}}
 function saveAdminLogs(logs){localStorage.setItem("vitrineAdminLogs",JSON.stringify(logs.slice(-80)))}
 function addAdminLog(text){const logs=getAdminLogs();logs.push({date:new Date().toLocaleString("pt-BR"),text});saveAdminLogs(logs);}
@@ -812,7 +821,7 @@ function useDemoAccess(role){
 }
 function fillDemo(){useDemoAccess(currentRole||"cliente");}
 function login(event){event.preventDefault();const email=document.getElementById("loginEmail").value.trim().toLowerCase(),password=document.getElementById("loginPassword").value;let user=null;if(currentRole==="admin")user=ADMINS_DB.find(x=>x.email===email&&accountPasswordAdmin()===password);else{const database=currentRole==="cliente"?CLIENTS_DB:SUPPLIERS_DB;const overrides=currentRole==="cliente"?getClientOverrides():{};user=database.find(item=>{const ov=overrides[item.id]||{};return String(item.email).toLowerCase()===email&&(currentRole==="cliente"&&ov.senha?ov.senha:item.senha)===password;});}if(!user){showToast("E-mail ou senha inválidos.");return;}const accountName=currentRole==="cliente"?user.nome:currentRole==="fornecedor"?user.responsavel:user.nome;sessionStorage.setItem("vitrineLoggedUser",JSON.stringify({role:currentRole,id:user.id,nome:accountName,email:user.email}));localStorage.setItem("vitrineLastAccess_"+currentRole+"_"+user.id,new Date().toLocaleString("pt-BR"));addAdminLog(currentRole==="admin"?"ADM realizou login na plataforma.":`${accountName} realizou login como ${currentRole}.`);document.getElementById("loginPage").style.display="none";document.querySelectorAll(".app").forEach(a=>a.classList.remove("active"));if(currentRole==="cliente"){document.getElementById("clientApp").classList.add("active");document.getElementById("clientName").textContent=accountName;buildFilters();renderProducts();}else if(currentRole==="fornecedor"){document.getElementById("supplierApp").classList.add("active");document.getElementById("supplierName").textContent=accountName;renderSupplier();}else{document.getElementById("adminApp").classList.add("active");document.getElementById("adminName").textContent=accountName;showAdminPanel("dashboard");}showToast("Login realizado com sucesso.");}
-function logout(){closeCart();closeSettings();document.querySelectorAll(".app").forEach(app=>app.classList.remove("active"));document.getElementById("loginPage").style.display="grid";document.getElementById("loginForm").reset();currentRole="cliente";window.selectedRole="cliente";document.querySelectorAll(".role-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.role==="cliente"));sessionStorage.removeItem("vitrineLoggedUser");}
+function logout(){closeCart();closeSettings();document.querySelectorAll(".app").forEach(app=>app.classList.remove("active"));document.getElementById("loginPage").style.display="grid";document.getElementById("loginForm").reset();currentRole="cliente";window.selectedRole="cliente";document.querySelectorAll(".role-btn").forEach(btn=>btn.classList.toggle("active",btn.dataset.role==="cliente"));sessionStorage.removeItem("vitrineLoggedUser");sessionStorage.removeItem(VITRINE_TOKEN_KEY);window.vitrineCurrentApiUser=null;}
 
 function togglePassword(button){
   const wrap = button.closest(".password-wrap");
@@ -832,9 +841,9 @@ function getLoggedAccount(){
   try{return JSON.parse(sessionStorage.getItem("vitrineLoggedUser")||"null");}catch(e){return null;}
 }
 function getClientOverrides(){
-  try{return JSON.parse(localStorage.getItem("vitrineClientOverrides")||"{}");}catch(e){return {};}
+  try{const data=JSON.parse(localStorage.getItem("vitrineClientOverrides")||"{}");let changed=false;Object.keys(data||{}).forEach(k=>{if(data[k]&&('senha' in data[k]||'password' in data[k])){delete data[k].senha;delete data[k].password;changed=true;}});if(changed)localStorage.setItem("vitrineClientOverrides",JSON.stringify(data));return data;}catch(e){return {};}
 }
-function saveClientOverrides(data){localStorage.setItem("vitrineClientOverrides",JSON.stringify(data));}
+function saveClientOverrides(data){const safe={...(data||{})};Object.keys(safe).forEach(k=>{if(safe[k]){delete safe[k].senha;delete safe[k].password;}});localStorage.setItem("vitrineClientOverrides",JSON.stringify(safe));}
 function getPref(key, fallback){const v=localStorage.getItem("vitrinePref_"+key); return v===null?fallback:v;}
 function setPref(key,value){localStorage.setItem("vitrinePref_"+key,String(value));}
 function showSettingsTab(tab,button){
@@ -1049,8 +1058,30 @@ function openSettings(){
   const role=account.role,isSupplier=role==="fornecedor";document.querySelectorAll(".supplier-only").forEach(el=>el.style.display=isSupplier?"block":"none");document.querySelectorAll(".client-only").forEach(el=>el.style.display=isSupplier?"none":"flex");const source=isSupplier?SUPPLIERS_DB.find(x=>Number(x.id)===Number(account.id)):CLIENTS_DB.find(x=>Number(x.id)===Number(account.id));const overrides=getClientOverrides()[account.id]||{};const data=isSupplier?(source||{}):Object.assign({},source||{},overrides);document.getElementById("settingsName").value=data.responsavel||data.nome||account.nome||"";document.getElementById("settingsEmail").value=data.email||account.email||"";document.getElementById("settingsPhone").value=data.telefone||"";document.getElementById("settingsCity").value=data.cidade||"";document.getElementById("settingsState").value=data.estado||"";document.getElementById("settingsCnpj").value=data.cnpj||"";document.getElementById("settingsAddress").value=data.endereco||"";document.getElementById("settingsDescription").value=data.descricao||"";document.getElementById("settingsWhatsapp").value=data.whatsapp||data.telefone||"";document.getElementById("settingsLanguage").value=getPref("language",localStorage.getItem("vitrineLanguage")||"pt-BR");document.getElementById("settingsTheme").value=getPref("theme","light");document.getElementById("settingsFontSize").value=getPref("fontSize","normal");document.getElementById("settingsOnlyAvailable").checked=getPref("onlyAvailable","false")==="true";document.getElementById("settingsShowStock").checked=getPref("showStock","true")==="true";document.getElementById("settingsSort").value=getPref("sort","default");document.getElementById("notifySystem").checked=getPref("notifySystem","true")==="true";document.getElementById("notifyProducts").checked=getPref("notifyProducts","true")==="true";document.getElementById("notifyInterest").checked=getPref("notifyInterest","true")==="true";document.getElementById("notifyEmail").checked=getPref("notifyEmail","false")==="true";document.getElementById("settingsLastAccess").textContent=localStorage.getItem("vitrineLastAccess_"+role+"_"+account.id)||"Ainda não registrado";document.getElementById("settingsCurrentPassword").value="";document.getElementById("settingsNewPassword").value="";document.getElementById("settingsNewPassword2").value="";showSettingsTab("perfil",document.querySelector(".settings-tab"));renderInterestList();document.getElementById("settingsModal").classList.add("open");
 }
 function saveSettingsV5(){const account=getLoggedAccount();if(!account)return;const name=document.getElementById("settingsName").value.trim()||"Usuário Vitrine";if(account.role==="admin"){localStorage.setItem("vitrineAdminName",name);setPref("language",document.getElementById("settingsLanguage").value);localStorage.setItem("vitrineLanguage",document.getElementById("settingsLanguage").value);setPref("theme",document.getElementById("settingsTheme").value);setPref("fontSize",document.getElementById("settingsFontSize").value);setPref("notifySystem",document.getElementById("notifySystem").checked);setPref("notifyEmail",document.getElementById("notifyEmail").checked);sessionStorage.setItem("vitrineLoggedUser",JSON.stringify(Object.assign({},account,{nome:name})));document.getElementById("adminName").textContent=name;applyV5Appearance();closeSettings();showToast("Configurações do ADM salvas com sucesso.");return;}/* fluxo V5 para cliente/fornecedor */const role=account.role,isSupplier=role==="fornecedor";if(isSupplier){const supplier=SUPPLIERS_DB.find(x=>Number(x.id)===Number(account.id));if(!supplier){showToast("Fornecedor não encontrado.");return;}supplier.responsavel=name;supplier.telefone=document.getElementById("settingsPhone").value.trim();supplier.cidade=document.getElementById("settingsCity").value.trim();supplier.estado=document.getElementById("settingsState").value.trim().toUpperCase();supplier.cnpj=document.getElementById("settingsCnpj").value.trim();supplier.endereco=document.getElementById("settingsAddress").value.trim();supplier.descricao=document.getElementById("settingsDescription").value.trim();supplier.whatsapp=document.getElementById("settingsWhatsapp").value.trim();saveSuppliers();document.getElementById("supplierName").textContent=name;}else{const all=getClientOverrides();all[account.id]={nome:name,telefone:document.getElementById("settingsPhone").value.trim(),cidade:document.getElementById("settingsCity").value.trim(),estado:document.getElementById("settingsState").value.trim().toUpperCase()};saveClientOverrides(all);document.getElementById("clientName").textContent=name;}setPref("language",document.getElementById("settingsLanguage").value);localStorage.setItem("vitrineLanguage",document.getElementById("settingsLanguage").value);setPref("theme",document.getElementById("settingsTheme").value);setPref("fontSize",document.getElementById("settingsFontSize").value);setPref("onlyAvailable",document.getElementById("settingsOnlyAvailable").checked);setPref("showStock",document.getElementById("settingsShowStock").checked);setPref("sort",document.getElementById("settingsSort").value);setPref("notifySystem",document.getElementById("notifySystem").checked);setPref("notifyProducts",document.getElementById("notifyProducts").checked);setPref("notifyInterest",document.getElementById("notifyInterest").checked);setPref("notifyEmail",document.getElementById("notifyEmail").checked);applyV5Appearance();if(role==="cliente")renderProducts();else renderSupplier();closeSettings();showToast("Configurações salvas com sucesso.");}
-function changeUserPassword(){const account=getLoggedAccount();if(!account)return;const current=document.getElementById("settingsCurrentPassword").value,newPass=document.getElementById("settingsNewPassword").value,confirm=document.getElementById("settingsNewPassword2").value;if(account.role==="admin"){if(current!==accountPasswordAdmin())return showToast("A senha atual está incorreta.");if(newPass.length<6)return showToast("A nova senha deve ter pelo menos 6 caracteres.");if(newPass!==confirm)return showToast("As novas senhas não são iguais.");ADMINS_DB[0].senha=newPass;sessionStorage.setItem("vitrineAdminPassword",newPass);showToast("Senha do ADM alterada com sucesso.");document.getElementById("settingsCurrentPassword").value="";document.getElementById("settingsNewPassword").value="";document.getElementById("settingsNewPassword2").value="";return;}/* Mantém função original para cliente/fornecedor */const user=account.role==="fornecedor"?SUPPLIERS_DB.find(x=>Number(x.id)===Number(account.id)):CLIENTS_DB.find(x=>Number(x.id)===Number(account.id));if(!user){showToast("Conta não encontrada.");return;}const overrides=getClientOverrides();const effective=account.role==="cliente"&&overrides[account.id]?.senha?overrides[account.id].senha:user.senha;if(current!==effective)return showToast("A senha atual está incorreta.");if(newPass.length<6)return showToast("A nova senha deve ter pelo menos 6 caracteres.");if(newPass!==confirm)return showToast("As novas senhas não são iguais.");if(account.role==="fornecedor"){user.senha=newPass;saveSuppliers();}else{const all=getClientOverrides();all[account.id]=Object.assign({},all[account.id]||{},{senha:newPass});saveClientOverrides(all);}showToast("Senha alterada com sucesso.");document.getElementById("settingsCurrentPassword").value="";document.getElementById("settingsNewPassword").value="";document.getElementById("settingsNewPassword2").value="";}
-function accountPasswordAdmin(){return sessionStorage.getItem("vitrineAdminPassword")||ADMINS_DB[0].senha;}
+async function changeUserPassword(){
+  const account=getLoggedAccount();
+  if(!account){showToast("Entre novamente para alterar sua senha.");return;}
+  const current=document.getElementById("settingsCurrentPassword").value;
+  const newPass=document.getElementById("settingsNewPassword").value;
+  const confirm=document.getElementById("settingsNewPassword2").value;
+  if(!current){showToast("Informe sua senha atual.");return;}
+  if(newPass.length<6){showToast("A nova senha deve ter pelo menos 6 caracteres.");return;}
+  if(newPass!==confirm){showToast("As novas senhas não são iguais.");return;}
+  if(current===newPass){showToast("A nova senha deve ser diferente da senha atual.");return;}
+  try{
+    const result=await apiFetch('/me/password',{
+      method:'PATCH',
+      body:JSON.stringify({currentPassword:current,newPassword:newPass})
+    });
+    document.getElementById("settingsCurrentPassword").value="";
+    document.getElementById("settingsNewPassword").value="";
+    document.getElementById("settingsNewPassword2").value="";
+    showToast(result.message||"Senha alterada e salva no banco de dados.");
+  }catch(error){
+    apiErrorMessage(error);
+  }
+}
+function accountPasswordAdmin(){return "";} // Login administrativo é validado exclusivamente pela API/MySQL.
 
 
 
@@ -1141,3 +1172,359 @@ function renderFavoriteProducts(){
   container.innerHTML=html;updateFavoriteBadges();
 }
 updateFavoriteBadges();
+
+/* ===== Camada de integração com API (mantida após o código da interface) ===== */
+
+/* ==========================================================
+   VITRINEPRO_12 - MODO BANCO REAL (API + MySQL)
+   Esta camada substitui o localStorage como fonte principal
+   de clientes, fornecedores, produtos, favoritos e interesses.
+========================================================== */
+const VITRINE_API = localStorage.getItem('vitrineApiUrl') || '/api';
+const VITRINE_TOKEN_KEY = 'vitrineApiToken';
+function apiToken(){ return sessionStorage.getItem(VITRINE_TOKEN_KEY) || ''; }
+let apiOnline = false;
+
+async function apiFetch(path, options={}) {
+  const headers = {'Content-Type':'application/json', ...(options.headers||{})};
+  const token = apiToken();
+  if(token) headers.Authorization = 'Bearer ' + token;
+  const response = await fetch(VITRINE_API + path, {...options, headers});
+  let data={};
+  try { data=await response.json(); } catch(e) {}
+  if(!response.ok) throw new Error(data.error || 'Erro na API.');
+  return data;
+}
+
+async function carregarBancoReal(){
+  try {
+    const data=await apiFetch('/catalog');
+
+    SUPPLIERS_DB=Array.isArray(data.suppliers)?data.suppliers.map(s=>({
+      ...s,
+      id:Number(s.id),
+      usuario_id:Number(s.usuario_id ?? s.usuarioId ?? s.user_id ?? 0),
+      empresa:s.empresa ?? s.nome_empresa ?? s.nome ?? '',
+      responsavel:s.responsavel ?? s.nome_responsavel ?? ''
+    })):[];
+
+    // Normaliza os nomes dos campos vindos do MySQL para o formato
+    // utilizado pelo restante do HTML. A API retorna, por exemplo,
+    // "nome", "categoria", "preco" e "estoque".
+    products=Array.isArray(data.products)
+      ? data.products.map(p=>({
+          ...p,
+          id:Number(p.id),
+          supplierId:Number(p.supplierId ?? p.fornecedor_id),
+          name:p.name ?? p.nome ?? '',
+          category:p.category ?? p.categoria ?? '',
+          brand:p.brand ?? p.marca ?? '',
+          model:p.model ?? p.modelo ?? p.nome ?? '',
+          price:Number(p.price ?? p.preco ?? 0),
+          stock:Number(p.stock ?? p.estoque ?? 0),
+          size:p.size ?? p.tamanho ?? '',
+          color:p.color ?? p.cor ?? '',
+          description:p.description ?? p.descricao ?? '',
+          emoji:p.emoji ?? '📦'
+        }))
+      : [];
+
+    apiOnline=true;
+    if(typeof buildFilters==='function') buildFilters();
+    return true;
+  } catch(e) {
+    apiOnline=false;
+    console.warn('API Vitrine Pro indisponível:',e.message);
+    return false;
+  }
+}
+
+function apiErrorMessage(e){ showToast(e?.message || 'Não foi possível concluir a operação.'); }
+
+window.login = async function(event){
+  event.preventDefault();
+  const email=document.getElementById('loginEmail').value.trim().toLowerCase();
+  const senha=document.getElementById('loginPassword').value;
+  try{
+    const data=await apiFetch('/login',{method:'POST',body:JSON.stringify({email,senha,tipo:currentRole})});
+    const user=data.user;
+    sessionStorage.setItem(VITRINE_TOKEN_KEY,data.token);
+    sessionStorage.setItem('vitrineLoggedUser',JSON.stringify({role:currentRole,id:user.id,nome:currentRole==='fornecedor'?user.responsavel:user.nome,email:user.email,fornecedorId:user.fornecedor_id||null}));
+    window.vitrineCurrentApiUser=user;
+    
+    if(currentRole==='cliente'){
+      document.getElementById('loginPage').style.display='none';
+      document.querySelectorAll('.app').forEach(a=>a.classList.remove('active'));
+      document.getElementById('clientApp').classList.add('active');
+      document.getElementById('clientName').textContent=user.nome;
+      await carregarBancoReal();
+      if(typeof carregarFavoritosAPI==='function') await carregarFavoritosAPI(user.id);
+      renderProducts();
+    }else if(currentRole==='fornecedor'){
+      document.getElementById('loginPage').style.display='none';
+      document.querySelectorAll('.app').forEach(a=>a.classList.remove('active'));
+      document.getElementById('supplierApp').classList.add('active');
+      document.getElementById('supplierName').textContent=user.responsavel || user.nome;
+      await carregarBancoReal();
+      renderSupplier();
+    }else{
+      document.getElementById('loginPage').style.display='none';
+      document.querySelectorAll('.app').forEach(a=>a.classList.remove('active'));
+      document.getElementById('adminApp').classList.add('active');
+      document.getElementById('adminName').textContent=user.nome;
+      showAdminPanel('dashboard');
+    }
+    showToast('Login realizado com o banco de dados real.');
+  }catch(e){apiErrorMessage(e);}
+};
+
+window.registerClient = async function(event){
+  event.preventDefault();
+  const senha=document.getElementById('clientSenha').value, senha2=document.getElementById('clientSenha2').value;
+  if(senha!==senha2){showToast('As senhas não conferem.');return;}
+  try{
+    const payload={nome:document.getElementById('clientNome').value.trim(),email:document.getElementById('clientEmail').value.trim(),telefone:document.getElementById('clientTelefone').value.trim(),cidade:document.getElementById('clientCidade').value.trim(),estado:document.getElementById('clientEstado').value.trim().toUpperCase(),senha};
+    await apiFetch('/clients',{method:'POST',body:JSON.stringify(payload)});
+    closeClientRegistration();
+    selectRole('cliente');
+    document.getElementById('loginEmail').value=payload.email;
+    document.getElementById('loginPassword').value=payload.senha;
+    showToast('Cliente cadastrado no MySQL com sucesso.');
+  }catch(e){apiErrorMessage(e);}
+};
+
+window.registerSupplier = async function(event){
+  event.preventDefault();
+  const senha=document.getElementById('regSenha').value, senha2=document.getElementById('regSenha2').value;
+  if(senha!==senha2){showToast('As senhas não conferem.');return;}
+  try{
+    const payload={responsavel:document.getElementById('regResponsavel').value.trim(),empresa:document.getElementById('regEmpresa').value.trim(),cnpj:document.getElementById('regCnpj').value.trim(),email:document.getElementById('regEmail').value.trim(),telefone:document.getElementById('regTelefone').value.trim(),endereco:document.getElementById('regEndereco').value.trim(),cidade:document.getElementById('regCidade').value.trim(),estado:document.getElementById('regEstado').value.trim().toUpperCase(),descricao:document.getElementById('regDescricao').value.trim(),senha};
+    const created=await apiFetch('/suppliers',{method:'POST',body:JSON.stringify(payload)});
+    closeSupplierRegistration();
+    selectRole('fornecedor');
+    document.getElementById('loginEmail').value=payload.email;
+    document.getElementById('loginPassword').value=payload.senha;
+    showToast('Fornecedor cadastrado no MySQL com sucesso.');
+    await carregarBancoReal();
+  }catch(e){apiErrorMessage(e);}
+};
+
+async function carregarFavoritosAPI(clientId){
+  try{
+    const f=await apiFetch('/favorites/'+clientId);
+    localStorage.setItem('vitrineFavorites_'+clientId,JSON.stringify(f));
+    window.vitrineApiFavorites=f;
+    updateFavoriteBadges();
+  }catch(e){console.warn(e);}
+}
+function currentClientId(){const s=sessionStorage.getItem('vitrineLoggedUser');try{return s?JSON.parse(s).id:null}catch(e){return null}}
+window.toggleFavoriteProduct = async function(productId){
+  const clientId=currentClientId(); if(!clientId){showToast('Faça login como cliente.');return;}
+  try{await apiFetch('/favorites',{method:'POST',body:JSON.stringify({cliente_id:clientId,produto_id:Number(productId)})});await carregarFavoritosAPI(clientId);renderProducts();}catch(e){apiErrorMessage(e);}
+};
+window.toggleFavoriteSupplier = async function(supplierId){
+  const clientId=currentClientId(); if(!clientId){showToast('Faça login como cliente.');return;}
+  try{await apiFetch('/favorites',{method:'POST',body:JSON.stringify({cliente_id:clientId,fornecedor_id:Number(supplierId)})});await carregarFavoritosAPI(clientId);renderProducts();}catch(e){apiErrorMessage(e);}
+};
+window.getFavorites = function(){return window.vitrineApiFavorites || {products:[],suppliers:[]};};
+
+window.editProduct = function(id){
+  const productId=Number(id);
+  window.editingProductId=productId;
+  openProductModal(productId);
+};
+
+window.openProductModalForCreate = function(){
+  window.editingProductId=null;
+  openProductModal();
+};
+
+window.saveProduct = async function(event){
+  event.preventDefault();
+  const session=JSON.parse(sessionStorage.getItem('vitrineLoggedUser')||'null');
+  const user=window.vitrineCurrentApiUser||{};
+  const fornecedorId=user.id && user.usuario_id ? user.id : (user.id||session?.id);
+  // O modal já guarda o ID no campo oculto ao clicar em Editar.
+  // Usamos esse ID como alternativa para evitar que a edição vire um novo cadastro.
+  const hiddenId=Number(document.getElementById('editProductId').value);
+  const editingId=window.editingProductId || (hiddenId > 0 ? hiddenId : null);
+  const payload={nome:document.getElementById('productName').value.trim(),categoria:document.getElementById('productCategory').value,marca:document.getElementById('productBrand').value,modelo:document.getElementById('productModel').value.trim(),preco:Number(document.getElementById('productPrice').value||0),estoque:Number(document.getElementById('productStock').value||0),descricao:document.getElementById('productDescription').value};
+  try{
+    if(editingId) await apiFetch('/products/'+editingId,{method:'PUT',body:JSON.stringify(payload)}); else await apiFetch('/products',{method:'POST',body:JSON.stringify(payload)});
+    closeProductModal();
+    window.editingProductId=null;
+    document.getElementById('editProductId').value='';
+    await carregarBancoReal();
+    renderSupplier();
+    showToast(editingId?'Produto atualizado no MySQL.':'Produto cadastrado no MySQL.');
+  }catch(e){apiErrorMessage(e);}
+};
+
+window.deleteProduct = async function(id){
+  if(!confirm('Excluir este produto do banco de dados?')) return;
+  try{await apiFetch('/products/'+Number(id),{method:'DELETE'});await carregarBancoReal();renderSupplier();showToast('Produto excluído do MySQL.');}catch(e){apiErrorMessage(e);}
+};
+
+window.simulatePurchase = async function(){
+  const session=JSON.parse(sessionStorage.getItem('vitrineLoggedUser')||'null');
+  if(!session?.id){showToast('Faça login como cliente para simular um pedido.');return;}
+  if(!cart.length){showToast('Adicione produtos à simulação primeiro.');return;}
+  try{
+    const items=cart.map(item=>({produto_id:Number(item.productId),quantidade:Number(item.quantity)}));
+    const result=await apiFetch('/orders',{method:'POST',body:JSON.stringify({items})});
+    showToast('Pedido '+result.codigo+' registrado. Total: '+formatBRL(result.total));
+    cart=[];saveCart();updateCartUI();
+    await carregarBancoReal();
+  }catch(e){apiErrorMessage(e);}
+};
+
+window.renderAdmin = async function(){
+  try{
+    const data=await apiFetch('/admin/dashboard');
+    const stat=(id,v)=>{const el=document.getElementById(id);if(el)el.textContent=v};
+    stat('adminStatClients',data.stats.clients);stat('adminStatSuppliers',data.stats.suppliers);stat('adminStatProducts',data.stats.products);stat('adminStatStock',data.stats.stock);
+    const pending=(data.suppliers||[]).filter(x=>x.status==='em_analise');
+    const overview=document.getElementById('adminOverview'); if(overview)overview.innerHTML=`<p>Clientes: <b>${data.stats.clients}</b> · Fornecedores: <b>${data.stats.suppliers}</b> · Produtos: <b>${data.stats.products}</b> · Pedidos: <b>${data.stats.orders||0}</b></p>`;
+    const pend=document.getElementById('adminPending'); if(pend)pend.innerHTML=pending.length?pending.map(x=>`<p>${escapeHtml(x.empresa)} — aguardando aprovação</p><button class="secondary-btn" onclick="adminSupplierStatus(${Number(x.id)},'ativo')">Aprovar</button>`).join(''):'<p>Nenhuma pendência.</p>';
+    const users=document.getElementById('adminUsersTable'); if(users)users.innerHTML=`<table><thead><tr><th>Cliente</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody>${(data.users||[]).map(x=>`<tr><td>${escapeHtml(x.nome)}</td><td>${escapeHtml(x.email)}</td><td>${escapeHtml(x.status)}</td><td><button class="secondary-btn" onclick="adminUserStatus(${Number(x.id)},'${x.status==='ativo'?'bloqueado':'ativo'}')">${x.status==='ativo'?'Bloquear':'Desbloquear'}</button> <button class="secondary-btn" onclick="adminDeleteUser(${Number(x.id)})">Remover</button></td></tr>`).join('')||'<tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>'}</tbody></table>`;
+    const suppliers=document.getElementById('adminSuppliersTable'); if(suppliers)suppliers.innerHTML=`<table><thead><tr><th>Empresa</th><th>Responsável</th><th>E-mail</th><th>Status</th><th>Ações</th></tr></thead><tbody>${(data.suppliers||[]).map(x=>`<tr><td>${escapeHtml(x.empresa)}</td><td>${escapeHtml(x.responsavel)}</td><td>${escapeHtml(x.email||'')}</td><td>${escapeHtml(x.status)}</td><td><button class="secondary-btn" onclick="adminSupplierStatus(${Number(x.id)},'ativo')">Aprovar/Ativar</button> <button class="secondary-btn" onclick="adminSupplierStatus(${Number(x.id)},'bloqueado')">Bloquear</button> <button class="secondary-btn" onclick="adminDeleteSupplier(${Number(x.id)})">Remover</button></td></tr>`).join('')||'<tr><td colspan="5">Nenhum fornecedor.</td></tr>'}</tbody></table>`;
+    const products=document.getElementById('adminProductsTable'); if(products)products.innerHTML=`<table><thead><tr><th>Produto</th><th>Marca</th><th>Fornecedor</th><th>Preço</th><th>Estoque</th><th>Ações</th></tr></thead><tbody>${(data.products||[]).map(x=>`<tr><td>${escapeHtml(x.modelo)}</td><td>${escapeHtml(x.marca)}</td><td>${escapeHtml(x.fornecedor)}</td><td>${formatBRL(x.preco)}</td><td>${x.estoque}</td><td><button class="secondary-btn" onclick="adminDeleteProduct(${Number(x.id)})">Remover</button></td></tr>`).join('')||'<tr><td colspan="5">Nenhum produto.</td></tr>'}</tbody></table>`;
+    const interests=document.getElementById('adminInterestsTable'); if(interests)interests.innerHTML=`<table><thead><tr><th>Código</th><th>Cliente</th><th>Produto</th><th>Fornecedor</th><th>Quantidade</th></tr></thead><tbody>${(data.interests||[]).map(x=>`<tr><td>${escapeHtml(x.codigo)}</td><td>${escapeHtml(x.cliente)}</td><td>${escapeHtml(x.produto)}</td><td>${escapeHtml(x.fornecedor)}</td><td>${x.quantidade}</td></tr>`).join('')||'<tr><td colspan="5">Nenhum pedido simulado.</td></tr>'}</tbody></table>`;
+    const [logs,notifications,reports]=await Promise.all([apiFetch('/admin/logs').catch(()=>[]),apiFetch('/admin/notifications').catch(()=>[]),apiFetch('/admin/reports').catch(()=>null)]);
+    const recent=document.getElementById('adminRecentLogs');if(recent)recent.innerHTML=(logs||[]).slice(0,5).map(x=>`<p><b>${escapeHtml(x.administrador||'Sistema')}</b> — ${escapeHtml(x.texto)} <small>${new Date(x.criado_em).toLocaleString('pt-BR')}</small></p>`).join('')||'<p>Nenhuma atividade registrada ainda.</p>';
+    const notif=document.getElementById('adminNotifications');if(notif)notif.innerHTML=(notifications||[]).map(x=>`<div class="admin-card"><b>${escapeHtml(x.titulo)}</b><p>${escapeHtml(x.mensagem)}</p><small>${new Date(x.criado_em).toLocaleString('pt-BR')}</small> ${Number(x.lida)?'<span>Lida</span>':`<button class="secondary-btn" onclick="adminReadNotification(${Number(x.id)})">Marcar como lida</button>`}</div>`).join('')||'<p>Nenhuma notificação.</p>';
+    const logsEl=document.getElementById('adminLogs');if(logsEl)logsEl.innerHTML=(logs||[]).map(x=>`<p><b>${escapeHtml(x.administrador||'Sistema')}</b> — ${escapeHtml(x.texto)} <small>${new Date(x.criado_em).toLocaleString('pt-BR')}</small></p>`).join('')||'<p>Nenhuma atividade registrada.</p>';
+    const rep=document.getElementById('adminReports');if(rep&&reports)rep.innerHTML=`<div class="admin-dashboard"><div class="admin-stat"><span>Pedidos simulados</span><strong>${Number(reports.totals.pedidos||0)}</strong></div><div class="admin-stat"><span>Unidades solicitadas</span><strong>${Number(reports.totals.unidades||0)}</strong></div><div class="admin-stat"><span>Total simulado</span><strong>${formatBRL(reports.totals.total_simulado||0)}</strong></div></div><h4>Pedidos por mês</h4><table><thead><tr><th>Mês</th><th>Pedidos</th><th>Total simulado</th></tr></thead><tbody>${reports.monthly.map(x=>`<tr><td>${escapeHtml(x.periodo)}</td><td>${Number(x.pedidos)}</td><td>${formatBRL(x.total_simulado)}</td></tr>`).join('')||'<tr><td colspan="3">Sem dados no período.</td></tr>'}</tbody></table><h4>Fornecedores por unidades solicitadas</h4><table><thead><tr><th>Fornecedor</th><th>Itens</th><th>Unidades</th></tr></thead><tbody>${reports.topSuppliers.map(x=>`<tr><td>${escapeHtml(x.empresa)}</td><td>${Number(x.itens_pedidos)}</td><td>${Number(x.unidades)}</td></tr>`).join('')||'<tr><td colspan="3">Sem dados.</td></tr>'}</tbody></table>`;
+  }catch(e){console.warn(e);showToast(e.message||'Não foi possível carregar o painel administrativo.');}
+};
+window.adminUserStatus=async function(id,status){try{await apiFetch('/admin/users/'+id+'/status',{method:'PATCH',body:JSON.stringify({status})});await window.renderAdmin();showToast('Status do usuário atualizado.');}catch(e){apiErrorMessage(e);}};
+window.adminSupplierStatus=async function(id,status){try{await apiFetch('/admin/suppliers/'+id+'/status',{method:'PATCH',body:JSON.stringify({status})});await window.renderAdmin();showToast('Status do fornecedor atualizado.');}catch(e){apiErrorMessage(e);}};
+window.adminDeleteUser=async function(id){if(!confirm('Remover este usuário? Esta ação pode remover dados relacionados.'))return;try{await apiFetch('/admin/users/'+id,{method:'DELETE'});await window.renderAdmin();showToast('Usuário removido.');}catch(e){apiErrorMessage(e);}};
+window.adminDeleteSupplier=async function(id){if(!confirm('Remover este fornecedor e seus produtos?'))return;try{await apiFetch('/admin/suppliers/'+id,{method:'DELETE'});await window.renderAdmin();showToast('Fornecedor removido.');}catch(e){apiErrorMessage(e);}};
+window.adminDeleteProduct=async function(id){if(!confirm('Remover este produto?'))return;try{await apiFetch('/admin/products/'+id,{method:'DELETE'});await window.renderAdmin();showToast('Produto removido.');}catch(e){apiErrorMessage(e);}};
+window.adminReadNotification=async function(id){try{await apiFetch('/admin/notifications/'+id+'/read',{method:'PATCH'});await window.renderAdmin();}catch(e){apiErrorMessage(e);}};
+
+
+
+// V21.1 — Configurações vinculadas ao usuário autenticado no MySQL.
+window.openSettings = async function(){
+  const account=getLoggedAccount();
+  if(!account){showToast('Entre em uma conta para acessar as configurações.');return;}
+  const role=account.role, isSupplier=role==='fornecedor', isAdmin=role==='admin';
+  document.querySelectorAll('.supplier-only').forEach(el=>el.style.display=isSupplier?'block':'none');
+  document.querySelectorAll('.client-only').forEach(el=>el.style.display=isSupplier?'none':'flex');
+  let data=window.vitrineCurrentApiUser||{};
+  if(!isAdmin){try{const me=await apiFetch('/me');data=me.user||data;window.vitrineCurrentApiUser=data;}catch(e){apiErrorMessage(e);return;}}
+  document.getElementById('settingsName').value=(isSupplier?data.responsavel:data.nome)||account.nome||'';
+  document.getElementById('settingsEmail').value=data.email||account.email||'';
+  document.getElementById('settingsPhone').value=data.telefone||'';
+  document.getElementById('settingsCity').value=data.cidade||'';
+  document.getElementById('settingsState').value=data.estado||'';
+  document.getElementById('settingsCnpj').value=data.cnpj||'';
+  document.getElementById('settingsAddress').value=data.endereco||'';
+  document.getElementById('settingsDescription').value=data.descricao||'';
+  document.getElementById('settingsWhatsapp').value=data.telefone||'';
+  document.getElementById('settingsLanguage').value=getPref('language','pt-BR');
+  document.getElementById('settingsTheme').value=getPref('theme','light');
+  document.getElementById('settingsFontSize').value=getPref('fontSize','normal');
+  document.getElementById('settingsOnlyAvailable').checked=getPref('onlyAvailable','false')==='true';
+  document.getElementById('settingsShowStock').checked=getPref('showStock','true')==='true';
+  document.getElementById('settingsSort').value=getPref('sort','default');
+  document.getElementById('notifySystem').checked=getPref('notifySystem','true')==='true';
+  document.getElementById('notifyProducts').checked=getPref('notifyProducts','true')==='true';
+  document.getElementById('notifyInterest').checked=getPref('notifyInterest','true')==='true';
+  document.getElementById('notifyEmail').checked=getPref('notifyEmail','false')==='true';
+  document.getElementById('settingsLastAccess').textContent=localStorage.getItem('vitrineLastAccess_'+role+'_'+account.id)||'Ainda não registrado';
+  document.getElementById('settingsCurrentPassword').value='';document.getElementById('settingsNewPassword').value='';document.getElementById('settingsNewPassword2').value='';
+  showSettingsTab('perfil',document.querySelector('.settings-tab'));
+  if(typeof renderInterestList==='function'&&!isSupplier)renderInterestList();
+  document.getElementById('settingsModal').classList.add('open');
+};
+window.saveSettingsV5 = async function(){
+  const account=getLoggedAccount();if(!account)return;
+  const name=document.getElementById('settingsName').value.trim()||'Usuário Vitrine';
+  if(account.role!=='admin'){
+    const payload={nome:name,responsavel:name,telefone:document.getElementById('settingsPhone').value.trim(),cidade:document.getElementById('settingsCity').value.trim(),estado:document.getElementById('settingsState').value.trim().toUpperCase(),cnpj:document.getElementById('settingsCnpj').value.trim(),endereco:document.getElementById('settingsAddress').value.trim(),descricao:document.getElementById('settingsDescription').value.trim()};
+    try{const result=await apiFetch('/me/profile',{method:'PATCH',body:JSON.stringify(payload)});window.vitrineCurrentApiUser={...(window.vitrineCurrentApiUser||{}),...(result.user||{}),...(result.supplier||{})};
+      sessionStorage.setItem('vitrineLoggedUser',JSON.stringify({...account,nome:name}));
+      if(account.role==='fornecedor')document.getElementById('supplierName').textContent=name;else document.getElementById('clientName').textContent=name;
+    }catch(e){apiErrorMessage(e);return;}
+  }else{localStorage.setItem('vitrineAdminName',name);sessionStorage.setItem('vitrineLoggedUser',JSON.stringify({...account,nome:name}));document.getElementById('adminName').textContent=name;}
+  setPref('language',document.getElementById('settingsLanguage').value);setPref('theme',document.getElementById('settingsTheme').value);setPref('fontSize',document.getElementById('settingsFontSize').value);
+  setPref('onlyAvailable',document.getElementById('settingsOnlyAvailable').checked);setPref('showStock',document.getElementById('settingsShowStock').checked);setPref('sort',document.getElementById('settingsSort').value);
+  setPref('notifySystem',document.getElementById('notifySystem').checked);setPref('notifyProducts',document.getElementById('notifyProducts').checked);setPref('notifyInterest',document.getElementById('notifyInterest').checked);setPref('notifyEmail',document.getElementById('notifyEmail').checked);
+  localStorage.setItem('vitrineLanguage',document.getElementById('settingsLanguage').value);applyV5Appearance();closeSettings();showToast('Configurações salvas no MySQL.');
+};
+
+// Sincroniza catálogo ao abrir a aplicação e deixa explícito quando a API ainda não foi iniciada.
+window.addEventListener('load',async()=>{
+  const ok=await carregarBancoReal();
+  if(!ok) setTimeout(()=>showToast('Banco MySQL: inicie o backend em backend/ para usar os dados reais.'),500);
+});
+
+/* ===== VITRINEPRO_23 - RESTAURAR SESSÃO APÓS F5 =====
+   O token JWT fica no sessionStorage durante a aba atual. Ao atualizar
+   a página, validamos o token na API e reconstruímos a tela do perfil.
+   Não criamos sessão local nem confiamos apenas nos dados do navegador.
+====================================================== */
+window.restoreVitrineSession = async function(){
+  const token=apiToken();
+  if(!token) return false;
+  try{
+    const data=await apiFetch('/me');
+    const user=data.user;
+    if(!user || !user.tipo) throw new Error('Não foi possível validar a sessão.');
+    currentRole=user.tipo;
+    window.selectedRole=currentRole;
+    window.vitrineCurrentApiUser=user;
+    const account={
+      role:currentRole,
+      id:user.id,
+      nome:currentRole==='fornecedor'?(user.responsavel||user.nome):user.nome,
+      email:user.email,
+      fornecedorId:user.fornecedor_id||null
+    };
+    sessionStorage.setItem('vitrineLoggedUser',JSON.stringify(account));
+    document.querySelectorAll('.role-btn').forEach(btn=>btn.classList.toggle('active',btn.dataset.role===currentRole));
+    document.getElementById('loginPage').style.display='none';
+    document.querySelectorAll('.app').forEach(app=>app.classList.remove('active'));
+
+    if(currentRole==='cliente'){
+      document.getElementById('clientApp').classList.add('active');
+      document.getElementById('clientName').textContent=account.nome;
+      await carregarBancoReal();
+      await carregarFavoritosAPI(user.id);
+      renderProducts();
+    }else if(currentRole==='fornecedor'){
+      document.getElementById('supplierApp').classList.add('active');
+      document.getElementById('supplierName').textContent=account.nome;
+      await carregarBancoReal();
+      renderSupplier();
+    }else if(currentRole==='admin'){
+      document.getElementById('adminApp').classList.add('active');
+      document.getElementById('adminName').textContent=account.nome;
+      showAdminPanel('dashboard');
+    }else{
+      throw new Error('Perfil de usuário inválido.');
+    }
+    return true;
+  }catch(e){
+    sessionStorage.removeItem(VITRINE_TOKEN_KEY);
+    sessionStorage.removeItem('vitrineLoggedUser');
+    window.vitrineCurrentApiUser=null;
+    document.querySelectorAll('.app').forEach(app=>app.classList.remove('active'));
+    document.getElementById('loginPage').style.display='grid';
+    console.warn('Sessão não restaurada:',e.message);
+    showToast('Sua sessão expirou. Faça login novamente.');
+    return false;
+  }
+};
+
+document.addEventListener('DOMContentLoaded',()=>{
+  if(apiToken()) window.restoreVitrineSession();
+});
+
+
+
+// V24 — menu de navegação responsivo.
+window.toggleMobileNav = function(button){ const header=button?.closest('.topbar'); const nav=header?.querySelector('.top-nav'); if(!nav)return; const open=nav.classList.toggle('mobile-open'); button.setAttribute('aria-expanded',String(open)); };

@@ -1,26 +1,27 @@
-# Vitrine Pro — versão 19
+# Vitrine Pro — VitrinePRO_24
 
-## Conteúdo
-- `VitrinePRO_19.html`: interface da versão 19.
-- `backend/VitrinePRO_19.html`: interface servida pelo backend.
-- `backend/server.js`: API Node.js/Express ajustada para servir a versão 19.
-- `backend/schema.sql`: estrutura do banco MySQL.
-- `backend/seed.js`: dados demonstrativos.
-- `backend/.env.example`: modelo de configuração, sem senhas reais.
-- `RESUMO_DAS_ALTERACOES.md`: resumo compartilhável da atualização.
+## Estrutura
+- `frontend/`: interface HTML, CSS e JavaScript.
+- `backend/`: API Node.js/Express e integração MySQL.
+- `tests/`: testes automatizados de regressão estática.
 
-## Como configurar em um computador
-1. Instale Node.js e MySQL.
-2. Abra a pasta `backend`.
-3. Execute `npm install`.
-4. Copie `.env.example` para um arquivo chamado `.env`.
-5. Edite `.env` e informe a senha local do MySQL e uma chave JWT longa e exclusiva. Não compartilhe o `.env`.
-6. Execute `schema.sql` no MySQL para criar a estrutura do banco `vitrinepro`.
-7. Opcionalmente, execute `node seed.js` para inserir os dados de demonstração. Atenção: use seed somente se desejar esses dados.
-8. Execute `npm start` dentro de `backend` e acesse `http://localhost:3000`.
+## Atualização
+1. Faça backup da pasta em uso.
+2. Extraia o ZIP da V24 em uma nova pasta `VitrinePRO_24`.
+3. Copie o seu `backend/.env` da versão anterior para `VitrinePRO_24/backend/.env`. O arquivo não é distribuído.
+4. Abra o terminal em `VitrinePRO_24/backend` e execute `npm install`.
+5. Execute `npm run check` e depois `npm start`.
+6. Acesse `http://localhost:3000`.
 
-## Situação conhecida
-A integração inicial com MySQL foi testada para login, listagem e cadastro de produto. A versão 19 inclui uma tentativa de correção no fluxo de edição para enviar `PUT /api/products/:id` quando há um ID de produto. **A edição ainda precisa ser validada no ambiente local**, assim como exclusão, cadastros e permissões de todos os perfis. Portanto, esta versão não deve ser considerada totalmente testada ou pronta para produção.
+## O que há na V24
+- Sessão restaurada após F5 e alteração de senha persistida em MySQL (herdadas e validadas na V23.1).
+- Bloqueio de operações de fornecedor quando o cadastro não está ativo, inclusive com token anterior à mudança de status.
+- Painel administrativo com clientes e fornecedores em listas separadas.
+- Menu de navegação recolhível em telas menores.
+- Testes automatizados de regressão estática.
 
-## Segurança
-O ZIP não inclui `.env` nem `node_modules`. Isso evita compartilhar credenciais locais e reduz o tamanho. Cada pessoa deve criar seu próprio `.env` com credenciais próprias. Não publicar a aplicação em produção sem revisão de segurança.
+## Banco e credenciais
+Não executar `schema.sql`, `seed.js` ou migrations antigas sobre o banco já utilizado. Nenhuma migração é necessária para a V24. Preserve os dados existentes. Nunca compartilhe `backend/.env`.
+
+## Observação sobre testes
+`npm run check` valida a sintaxe do backend/frontend e executa os testes estáticos. Os testes reais de login, MySQL, permissões e interface precisam ser feitos com o banco local ativo.

@@ -1,24 +1,15 @@
-# Vitrine Pro — VitrinePRO_19
+# VitrinePRO_24 — Resumo das alterações
 
-**Data:** 23/10/2026
+## Base
+Consolidada a partir da V23.1, que já continha restauração de sessão após F5 e alteração de senha persistida no MySQL.
 
-## Alterações incluídas
-- Incluído o arquivo de interface `VitrinePRO_19.html` na raiz e em `backend/`.
-- Atualizado `backend/server.js` para servir `VitrinePRO_19.html`.
-- Mantida a API de produtos com rotas de cadastro (`POST /api/products`), edição (`PUT /api/products/:id`) e exclusão (`DELETE /api/products/:id`).
-- A interface da versão 19 tenta usar o ID do produto ao editar e enviar uma requisição `PUT`, em vez de criar um novo produto.
-- Incluídas instruções de configuração e um modelo `.env.example` sem credenciais reais.
-- Removidos do pacote `.env` privado e `node_modules`; as dependências devem ser instaladas com `npm install`.
+## Alterações desta versão
+- Revalidação do status do fornecedor no backend em operações de catálogo, produtos e painel; token antigo não libera ações após bloqueio ou retorno à análise.
+- Endpoint de produtos de fornecedor exibe somente produtos de fornecedores ativos.
+- Painel administrativo: tabela de usuários passa a listar somente clientes; fornecedores permanecem em tabela própria.
+- Navegação móvel: menu recolhível nas áreas de cliente, fornecedor e administrador.
+- Removidos valores de senha demonstrativos em texto puro das estruturas legadas do JavaScript. O login oficial continua validado pela API/MySQL.
+- Criados testes automatizados de regressão estática para autorização, separação das tabelas, menu móvel, credenciais demonstrativas e rotas de sessão/senha.
 
-## Testes já relatados
-- Conexão com o MySQL utilizada durante os testes.
-- Login testado.
-- Listagem de produtos do fornecedor Carlos exibida corretamente.
-- Cadastro de um produto de teste gravado no MySQL.
-
-## Pendente
-- Confirmar que a edição atualiza o mesmo registro sem duplicar produto.
-- Testar exclusão e todos os fluxos de clientes, fornecedores e administrador.
-- Validar o projeto em outro computador com configuração própria do MySQL.
-
-**Observação:** esta é uma versão de trabalho para teste/compartilhamento, não uma declaração de que todas as funções foram validadas.
+## Limites da validação
+Os testes automatizados verificam estrutura e presença das proteções no código; não substituem testes end-to-end com MySQL e navegador. Não foi possível executar banco real nesta preparação.

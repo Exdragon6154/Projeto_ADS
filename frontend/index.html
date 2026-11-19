@@ -1,11 +1,13 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-<meta name="version" content="VitrinePRO_10">
+<meta name="version" content="VitrinePRO_24">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Vitrine Pro</title>
-<link rel="stylesheet" href="assets/css/style.css">
+<!-- VITRINEPRO_15: versão preparada para publicação no Railway -->
+<link rel="stylesheet" href="/css/style.css">
+
 </head>
 <body>
 
@@ -54,19 +56,9 @@
       </form>
 
       <div class="login-extra">
-        <span>Modo demonstração</span>
-        <button class="link" onclick="fillDemo()">Preencher acesso</button>
+        <span>Acesso seguro</span>
       </div>
-      <div class="demo-note">
-        <div class="demo-access-title">🔐 Acessos para teste</div>
-        <div class="demo-access-grid">
-          <button type="button" class="demo-access" onclick="useDemoAccess('cliente')"><strong>Cliente</strong><small>joao.cliente@vitrinepro.com</small><small>Senha: 123456</small></button>
-          <button type="button" class="demo-access" onclick="useDemoAccess('fornecedor')"><strong>Fornecedor</strong><small>carlos.fornecedor@vitrinepro.com</small><small>Senha: 123456</small></button>
-          <button type="button" class="demo-access" onclick="useDemoAccess('admin')"><strong>Administrador</strong><small>admin@vitrinepro.com</small><small>Senha: 123456</small></button>
-        </div>
-        <div style="margin-top:10px">Clique em um dos acessos acima para preencher automaticamente o login. O protótipo utiliza JavaScript/localStorage e os dados são fictícios para demonstração.</div>
-      </div>
-    </div>
+   </div>
   </div>
 </section>
 
@@ -74,6 +66,7 @@
 <section id="clientApp" class="app">
   <header class="topbar">
     <div class="logo">VITRINE PRO</div>
+    <button type="button" class="mobile-menu-toggle" onclick="toggleMobileNav(this)" aria-expanded="false" aria-label="Abrir menu">☰ Menu</button>
     <nav class="top-nav">
       <button class="nav-link" onclick="showClientSection(); selectedSupplierId=null; refreshClientCatalog()">Produtos</button>
       <button class="nav-link" onclick="renderFavorites()">❤️ Favoritos <span id="favoriteBadge" style="font-size:10px;color:var(--red)">0</span></button>
@@ -122,6 +115,7 @@
 <section id="supplierApp" class="app">
   <header class="topbar">
     <div class="logo">VITRINE PRO</div>
+    <button type="button" class="mobile-menu-toggle" onclick="toggleMobileNav(this)" aria-expanded="false" aria-label="Abrir menu">☰ Menu</button>
     <nav class="top-nav">
       <button class="nav-link" onclick="showSupplierSection()">Meu catálogo</button>
       <button class="nav-link" onclick="openSettings()">Configurações</button>
@@ -141,7 +135,7 @@
         <p>Cadastre produtos, informe estoque e defina o preço de cada item.</p>
       </div>
       <div class="supplier-actions">
-        <button class="add-btn" onclick="openProductModal()">＋ Adicionar item</button>
+        <button class="add-btn" onclick="openProductModalForCreate()">＋ Adicionar item</button>
       </div>
     </div>
 
@@ -177,6 +171,7 @@
 <section id="adminApp" class="app">
   <header class="topbar">
     <div class="logo">VITRINE PRO</div>
+    <button type="button" class="mobile-menu-toggle" onclick="toggleMobileNav(this)" aria-expanded="false" aria-label="Abrir menu">☰ Menu</button>
     <nav class="top-nav">
       <button class="nav-link" onclick="showAdminPanel('dashboard')">Dashboard</button>
       <button class="nav-link" onclick="showAdminPanel('usuarios')">Usuários</button>
@@ -201,6 +196,7 @@
       <button data-admin-tab="interesses" onclick="showAdminPanel('interesses',this)">📋 Interesses</button>
       <button data-admin-tab="notificacoes" onclick="showAdminPanel('notificacoes',this)">🔔 Notificações</button>
       <button data-admin-tab="logs" onclick="showAdminPanel('logs',this)">🛡️ Atividades</button>
+      <button data-admin-tab="relatorios" onclick="showAdminPanel('relatorios',this)">📈 Relatórios</button>
     </div>
     <section id="adminPanelDashboard" class="admin-panel active">
       <div class="admin-dashboard">
@@ -210,7 +206,7 @@
         <div class="admin-stat"><span>Estoque total</span><strong id="adminStatStock">0</strong></div>
       </div>
       <div class="admin-grid">
-        <div class="admin-card"><h3>📈 Visão geral</h3><div id="adminOverview"></div></div>
+        <div class="admin-card"><h3>📈 Visão geral</h3><div id="adminOverview"></div><button class="secondary-btn" onclick="showAdminPanel('relatorios')">Ver relatórios</button></div>
         <div class="admin-card"><h3>🔔 Pendências</h3><div id="adminPending"></div></div>
       </div>
       <div class="admin-card"><h3>🛡️ Atividades recentes</h3><div id="adminRecentLogs"></div></div>
@@ -218,9 +214,10 @@
     <section id="adminPanelUsuarios" class="admin-panel"><div class="admin-card"><h3>👥 Clientes cadastrados</h3><div id="adminUsersTable" class="admin-table"></div></div></section>
     <section id="adminPanelFornecedores" class="admin-panel"><div class="admin-card"><h3>🏪 Fornecedores cadastrados</h3><div id="adminSuppliersTable" class="admin-table"></div></div></section>
     <section id="adminPanelProdutos" class="admin-panel"><div class="admin-card"><h3>📦 Produtos da plataforma</h3><div id="adminProductsTable" class="admin-table"></div></div></section>
-    <section id="adminPanelInteresses" class="admin-panel"><div class="admin-card"><h3>📋 Interesses registrados</h3><div id="adminInterestsTable" class="admin-table"></div><div class="settings-note">Nesta versão, os interesses usam os dados da simulação armazenada no navegador. Não existe compra ou pagamento real.</div></div></section>
+    <section id="adminPanelInteresses" class="admin-panel"><div class="admin-card"><h3>📋 Interesses registrados</h3><div id="adminInterestsTable" class="admin-table"></div><div class="settings-note">Os interesses representam pedidos simulados registrados no banco de dados. A plataforma não processa pagamentos.</div></div></section>
     <section id="adminPanelNotificacoes" class="admin-panel"><div class="admin-card"><h3>🔔 Central de notificações</h3><div id="adminNotifications"></div></div></section>
     <section id="adminPanelLogs" class="admin-panel"><div class="admin-card"><h3>🛡️ Registro de atividades</h3><div id="adminLogs"></div></div></section>
+    <section id="adminPanelRelatorios" class="admin-panel"><div class="admin-card"><h3>📈 Relatórios gerenciais</h3><p class="settings-note">Valores representam pedidos simulados; não são pagamentos recebidos.</p><div id="adminReports"></div></div></section>
   </main>
 </section>
 
@@ -402,7 +399,7 @@
       <details open><summary>Como funciona a Vitrine Pro?</summary><p>A Vitrine Pro conecta clientes e fornecedores por meio de um catálogo digital. O cliente pode encontrar produtos e montar uma simulação de interesse.</p></details>
       <details><summary>Existe pagamento ou checkout?</summary><p>Não. Esta versão não realiza pagamentos, compras, cartões ou checkout. O objetivo é apresentar produtos e facilitar o contato com o fornecedor.</p></details>
       <details><summary>Como o fornecedor cadastra produtos?</summary><p>Depois de entrar como fornecedor, use o botão “Adicionar item” no catálogo para cadastrar preço, estoque, marca, categoria e descrição.</p></details>
-      <details><summary>Onde ficam os dados?</summary><p>Este é um protótipo. Os dados de demonstração e preferências são armazenados no localStorage do navegador.</p></details>
+      <details><summary>Onde ficam os dados?</summary><p>Os dados principais da plataforma são armazenados no banco de dados MySQL. Algumas preferências de visualização podem permanecer neste navegador.</p></details>
       <div class="about-card"><strong>Vitrine Pro</strong><span>Catálogo digital · Versão 05</span><span>Protótipo acadêmico</span></div>
     </div>
 
@@ -420,6 +417,11 @@
 
 <div id="toast" class="toast"></div>
 
-<script src="assets/js/app.js"></script>
+
+
+<!-- VITRINEPRO_14: normalização dos campos da API MySQL para o catálogo -->
+<script src="/js/app.js" defer></script>
 </body>
 </html>
+
+
